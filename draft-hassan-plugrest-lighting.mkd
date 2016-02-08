@@ -1,0 +1,292 @@
+---
+title:  PlugREST Lighting Representation Format
+# abbrev: plugrest-lighting
+docname: draft-hassan-plugrest-lighting-00
+date: 2015-10-01
+# date: 2015-10
+# date: 2015
+
+# stand_alone: true
+
+ipr: trust200902
+area: Applications
+wg: Thing-to-Thing Research Group
+kw: Internet-Draft
+cat: exp
+
+coding: us-ascii
+pi:    # can use array (if all yes) or hash here
+#  - toc
+#  - sortrefs
+#  - symrefs
+  toc: yes
+  sortrefs:   # defaults to yes
+  symrefs: yes
+
+author:
+      -
+        ins: Y. Hassan
+        name: Yassin Nasir Hassan
+        org: ETH Zurich
+        street: Universitaetstrasse 6
+        city: CH-8092 Zurich
+        country: Switzerland
+        email: hassany@student.ethz.ch
+
+normative:
+  I-D.draft-hartke-core-lighting-00:
+  I-D.ietf-core-coap:
+  RFC7252: coap
+  RFC7159: json
+  RFC2119:
+  REST:
+    title: Architectural Styles and the Design of Network-based Software Architectures
+    author:
+        ins: Y. N. Hassan
+        name: Yassin N. Hassan
+        org: ETH Zurich, Switzerland
+    date: 2016-10-31
+
+informative:
+  RFC7049: cbor
+  REST:
+    title: Architectural Styles and the Design of Network-based Software Architectures
+    author:
+        ins: R. Fielding
+        name: Roy Fielding
+        org: University of California, Irvine
+    date: 2000
+
+
+--- abstract
+
+This Internet-Draft describes an experimental representation format for the lighting use case within the T2TRG PlugREST.
+The application-specific format extends CoRE-HAL {{I-D.draft-hassan-core-hal-00}} with a data model for lighting.
+
+--- middle
+
+# Introduction {#foreword}
+
+T.B.D.
+
+## Terminology
+
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+"SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+document are to be interpreted as described in RFC 2119, BCP 14
+{{RFC2119}} and indicate requirement levels for compliant CoAP
+implementations.
+
+# Lighting State 
+A lighting state document is based in the media type CoRE-HAL and has the media type "application/lighting+state".
+
+Its root object MUST be a lighting state object.
+
+# Lighting State Object
+The lighting state object represents the state current of a light bulb. A light bulb may provide multiple light state representations some of which MAY be partial. For example a colour light bulb may provide a lighting state that only represents lights brightness, leaving out the lights colour.  
+
+The object has the following members:
+
+{: vspace="0"}
+"value": Lighting Value Object
+: Defines the light colour.  This property is REQUIRED.
+
+"type": string
+: Defines the type of the lighting value object defined in the "value" property.  This property is REQUIRED.
+
+The object MAY contain the following link relations:
+
+{: vspace="0"}
+"sameAs":
+: The "sameAs" link relation can be used to link to other representations of the same resource. The link object name SHOULD define the value type of the linked representation. 
+
+"edit":
+: The "edit" link relation can be used to define a form for setting the lighting state. The name property in the form object defines a set of accepted lighting state value types. If the target lighting state is not produceable the closest produceable value SHOULD be chosen.
+
+"transition":
+: The "transition" link relation can be used to define a form that can be used to transition to a new lighting state. The link relations  MAY be template. The template takes an OPTIONAL "duration" parameter that defines the number of milliseconds the transition animation should take. The name property in the form object defines a set of accepted lighting state value types. If the "transition" link relation is not available, the "edit" link relation SHOULD be used.
+
+
+## Example
+      {
+         "value": {
+            "r":20,
+            "g":0,
+            "b":233
+         },
+         "type": "rgb",
+         "_link":{
+            "sameAs":[
+               {
+                 "name":"temperature",
+                 "href":"/temperature",
+                 "type":"application/lighting-state+json"
+               },
+               {
+                 "name":"hue",
+                 "href":"/hue",
+                 "type":"application/lighting-state+json"
+               },
+               {
+                 "name":"brightness",
+                 "href":"/brightness",
+                 "type":"application/lighting-state+json"
+               }
+            ]
+         },
+         "_form":{
+            "edit": {
+              "name":["hsv","observe-rgb","rgb","temperature","brightness"]
+              "href":"",
+              "expects":"application/lighting-state+json"
+            },
+            "transition": {
+              "name":["hue","observe-rgb","rgb","temperature","brightness"],
+              "href":"transition/{duration}",
+              "expects":"application/lighting-state+json",
+              "templated": true
+            }
+         }
+      }
+
+
+# Lighting Value Object
+The lighting value object is used to describe the current or desired lighting state. This document defines six different lighting value types. Additional types MAY be defined in future versions of the CoRE Lighting media type. For example an additional lighting value type can be defined to describe a lighting setting where the light bulb cycles between colours.  
+
+## RGB Value
+The "rgb" value type defines the light colour using the RGB color model.
+
+The object has the following members:
+
+{: vspace="0"}
+"r": integer
+: Defines the red colour component. The value SHOULD be between 0-255. This property is REQUIRED.
+
+"g": integer
+: Defines the green colour component. The value SHOULD be between 0-255. This property is REQUIRED.
+
+"b": integer
+: Defines the blue colour component. The value SHOULD be between 0-255. This property is REQUIRED.
+
+
+
+      {
+         "r":20,
+         "g":0,
+         "b":233
+      }
+
+## Temperature Value
+The "temperature" value type defines the light temperature and saturation. When setting the light temperature and saturation, the other parameters are not changed.
+
+The object has the following members:
+
+{: vspace="0"}
+"kelvin": integer
+: Defines the colour temperature.  This property is REQUIRED.
+
+"saturation": double
+: Defines the colour saturation. The value SHOULD be between 0.0-1.0. This property is REQUIRED.
+
+
+
+      {
+         "kelvin":5000,
+         "saturation":1.0
+      }
+
+## HSV Value
+The "hsv" value type defines the light colour using the HSV colour model.
+
+The object has the following members:
+
+{: vspace="0"}
+"hue": integer
+: Defines the colour temperature. The value SHOULD be between 0-360. This property is REQUIRED.
+
+"saturation": double
+: Defines the colour saturation. The value SHOULD be between 0.0-1.0. This property is REQUIRED.
+
+"brightness": double
+: Defines the colour brightness/value. The value SHOULD be between 0.0-1.0. This property is REQUIRED.
+
+
+
+      {
+         "hue":121,
+         "saturation":1.0,
+         "brightness":0.5,
+      }
+
+## Brightness Value
+The "brightness" value type defines the light brightness. When setting the light brightness the other parameters are not changed.
+The object has the following members:
+
+{: vspace="0"}
+"brightness": double
+: Defines light brightness. The value SHOULD be between 0.0-1.0. This property is REQUIRED.
+
+
+
+      {
+         "brightness":1.0
+      }
+
+
+
+## CIE xyY Value
+The "cie" value type defines the light colour using the CIE xyY colour model. 
+
+The object has the following members:
+
+{: vspace="0"}
+"x": double
+: Defines the x coordinate. This property is REQUIRED.
+
+"y": double
+: Defines the y coordinate. This property is REQUIRED.
+
+"luminosity": double
+: Defines the luminosity. This property is REQUIRED.
+
+
+
+      {
+         "x":0.4,
+         "y":0.51,
+         "luminosity":0.3
+      }
+
+
+## Observe Value
+The observe value defines a link to a resource with the media type "application/lighting+state" defining the lights target state. The light bulb SHOULD "observe" the linked resource state and keep the physical state up to date with the linked state.
+
+The observe value type name is defined by adding the "observe-" prefix to the observed representations value type. For example when observing a resource with the value type "rgb", the observe value linking the resource has the type "observe-rgb".
+
+The observed representation value type SHOULD NOT be an observe value.
+
+The object has the following members:
+
+{: vspace="0"}
+"observe": url
+: Defines the URI of the observed resource. The linked resource SHOULD be represented using the media type "application/lighting+state".  This property is REQUIRED.
+
+
+
+      {
+         "observe":"coap://www.example.com/color"
+      }
+
+
+--- fluff
+
+<!--  LocalWords:  CoAP datagram CoRE WG RESTful IP ETag reassembler
+-->
+<!--  LocalWords:  blockwise idempotence statelessly keepalive SZX
+-->
+<!--  LocalWords:  acknowledgement retransmissions ACKs ACK untrusted
+-->
+<!--  LocalWords:  acknowledgements interoperability retransmission
+-->
+<!--  LocalWords:  BCP atomicity NUM WebDAV IANA
+-->
