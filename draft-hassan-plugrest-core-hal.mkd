@@ -1,0 +1,422 @@
+---
+title:  CoRE Hypertext Application Language
+# abbrev: CoRE-HAL
+docname: draft-hassan-core-hal-00
+date: 2015-10-01
+# date: 2015-10
+# date: 2015
+
+# stand_alone: true
+
+ipr: trust200902
+area: Applications
+wg: Thing-to-Thing Research Group
+kw: Internet-Draft
+cat: exp
+
+coding: us-ascii
+pi:    # can use array (if all yes) or hash here
+#  - toc
+#  - sortrefs
+#  - symrefs
+  toc: yes
+  sortrefs:   # defaults to yes
+  symrefs: yes
+
+author:
+      -
+        ins: Y. Hassan
+        name: Yassin Nasir Hassan
+        org: ETH Zurich
+        street: Universitaetstrasse 6
+        city: CH-8092 Zurich
+        country: Switzerland
+        email: hassany@student.ethz.ch
+
+normative:
+  I-D.draft-kelly-json-hal-07: hal
+  I-D.draft-ietf-core-resource-directory-05: RD
+  RFC7159: json
+  RFC2119:
+  RFC3986:
+  RFC6570:
+  RFC7641:
+
+informative:
+  RFC7049: cbor
+  REST:
+    title: Architectural Styles and the Design of Network-based Software Architectures
+    author:
+#      -
+        ins: R. Fielding
+        name: Roy Fielding
+        org: University of California, Irvine
+    date: 2000
+
+entity:
+        SELF: "[RFCXXXX]"
+
+# --- note_IESG_Note
+#
+# bla bla bla
+
+--- abstract
+
+This document proposes a representation format called "CoRE-HAL."
+It is an extension of the Hypertext Application Language (HAL) {{I-D.kelly-json-hal}} with support for forms.
+
+--- middle
+
+# Introduction            {#foreword}
+
+This documents proposes an extension to the HAL media type. The extension defines a convention for expressing forms hypermedia controls and a convention for decoupling resource properties.
+
+ 
+
+# Requirements
+
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+"SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+document are to be interpreted as described in RFC 2119, BCP 14
+{{RFC2119}} and indicate requirement levels for compliant CoAP
+implementations.
+
+# Discovery
+
+The discovery of resources should be based on the CoRE Resource Directory {{I-D.ietf-core-resource-directory}}.
+To allow resource identification without the loading resource, information crucial to the identification, such as the device location, SHOULD be added to the resource directory using link attributes. 
+
+Resources can be discovered based on their physical location. 
+
+- The resource MAY be registered at the root resource directory with a matching resource attribute. 
+- The resource MAY be registered in a location description with an id that is a prefix of the resources location. The resource MUST have a matching resource attribute.
+- The resource MAY be registered in a location description with a matching id.
+- The resource MAY be registered in a device description with a matching location.
+
+# Resource Objects
+
+A Resource Object SHOULD contain a link to it self using the link relation type "self". The self link can either be defined in the "_self" or using the reserved property "_self" in the Resource Object. 
+
+# Decoupled Property Values
+
+This extension defines a reserved property in addition to the reserved property defined in HAL. The OPTIONAL reserved property "_decoupled" in the Resource Object contains the decoupled property values.
+
+The property names in the "_decoupled" are the names of the decoupled properties and the values are Link Objects. 
+
+## Difference between link and decoupled property value
+
+The decoupled relation is be used to outsource resource properties. The main difference between a decoupled property value and a linked resource is that the hypermedia controls for modifying the decoupled property value are define in the Resource Object referencing the value. Therefore, this hypermedia type can describe actions that modifies resources that do not contain a form description e.g. the original Resource Object can describe how a referenced image can be updated.  
+
+In the following request we get a resource description that contains the property data:
+
+	   GET /backup/523 HTTP/1.1
+	   Host: example.org
+	   Accept: application/x.backup+json
+	
+	   HTTP/1.1 200 OK
+	   Content-Type: application/x.backup+json
+	
+	   {
+	     "_links": {
+	       "self": { "href": "/backup/523" }
+	     },
+	     "name": "",
+	     "status": "shipped",
+	     "data": "data data data data data data data data"
+	   }
+
+In the following example the same resource is represented with a decoupled "data" property.
+
+	   GET /backup/523 HTTP/1.1
+	   Host: example.org
+	   Accept: application/x.backup+json
+	
+	   HTTP/1.1 200 OK
+	   Content-Type: application/x.backup+json
+	
+	   {
+	     "_links": {
+	       "self": { "href": "/backup/523" }
+	     },
+	     "name": "",
+	     "status": "shipped",
+	     "_decoupled": {
+	       "data": { "href": "/backup/523/data", "type":"text/plain"}
+	     }
+	   }
+
+The value of the data property can be retrieved loading the resource referenced in the Link Object. 
+
+	   GET /backup/523/data HTTP/1.1
+	   Host: example.org
+	   Accept: text/plain
+	
+	   HTTP/1.1 200 OK
+	   Content-Type: text/plain
+	   
+	   data data data data data data data data
+
+# Form Object
+A Form Object represents a form hyper media control. For example, a form can be used to describe how a resource can be modified.  The Form Object has the following properties:
+
+## name
+
+The "name" property is OPTIONAL.
+
+Its value is a string or an array of string that MAY be used as a secondary key for selecting Form Objects
+which share the same relation type.
+   
+## method
+
+The "method" property is REQUIRED.
+
+Its value is either GET, PUT, POST, or DELETE. The value specifies the HTTP method used to send the form to the server. Requests using the GET method SHOULD be safe and not change the resource state.
+
+## href
+
+The "href" property is REQUIRED.
+   
+Its value is either a URI {{RFC3986}} or a URI Template {{RFC6570}}.
+
+If the value is a URI Template then the Link Object SHOULD have a "templated" attribute whose value is true. The properties of the input media type representation are used URI template parameters if not no other parameters are provided.
+
+
+
+## templated
+
+The "templated" property is OPTIONAL.
+
+Its value is boolean and SHOULD be true when the Link Object's "href" property is a URI Template {{RFC6570}}.
+
+Its value SHOULD be considered false if it is undefined or any other value than true.
+
+
+
+## etag
+The "etag" property is OPTIONAL.
+
+Its value defines the etag to be sent with the request. This can be used for concurrency control, preventing subsequent updates from overwriting each other.
+
+
+
+
+## statusCodes
+
+The "statusCodes" property is OPTIONAL.
+
+Its value is an integer or an array of integers used as a hint to indicate the status codes expected to be returned when submitting the form.
+
+
+## input
+
+The "input" property is OPTIONAL.
+
+Its value is a string used as a hint to indicate the media types to be used for the request construction. If "payloadProperty" property is not defined the request payload is equal to the media type representation. If the "payloadProperty" property is defined, the "input" property defines the media type based on which the payload is constructed.
+
+Its value SHOULD be considered equal to the "accepts" property value if it is undefined. If the "accepts" is undefined the payload is empty. 
+
+## payloadProperty
+
+The "payload_property" property is OPTIONAL. This property cannot be combined with the "excludes" property.
+
+Its value is a string used to define the property of the input media type representation defining the request payload. This option can be used to define the update action for a decoupled value.
+
+## accepts
+
+The "accepts" property is OPTIONAL.
+
+Its value is a string used as a hint to indicate the media types expected to be posted when submitting the form.
+
+## excludes
+
+The "excludes" property is OPTIONAL. This property cannot be combined with the "value" property.
+
+Its value is an array of strings used to define a list of properties to be removed form the expected media type representation. This option can be used to define create and update actions for resources with decoupled properties. Separate update forms must then be defined for the decoupled resources.
+
+
+## type
+
+The "type" property is OPTIONAL.
+
+Its value is a string used as a hint to indicate the media types expected to be returned when submitting the form.
+
+### Example
+Form defining the update operation for a resource with the media type "application/x.backup+json" and a decoupled property "data".
+
+
+		{
+		  "_links":{"self":{"href":"/backup/21bb6f08"}},
+		  "id": "21bb6f08",
+		  "name":"",
+		  "status":"shipped",
+		  "_decoupled":{
+		    "data":{"href":"/backup/523/data", "type":"text/plain"}
+		  },
+		  "_forms":{
+		    "edit":[
+		      {
+		        "href":"",
+		        "accepts":"application/x.backup+json",
+		        "excludes":["data"]
+		      },
+		      {
+		        "href":"/backup/{id}/data",
+		        "input":"application/x.backup+json",
+		        "accepts":"text/plain",
+		        "value":"data"
+		      }
+		    ]
+		  }
+		}
+	   
+# Link Object Extension	 
+
+## name
+
+The "name" property is OPTIONAL.
+
+Its value is a string or an array of string that MAY be used as a secondary key for selecting Link Objects
+which share the same relation type.
+
+## type
+The "type" property is OPTIONAL.
+
+Its value is a string or an array of strings used as a hint to indicate the media types expected when dereferencing the target resource.
+	   
+## etag
+The "etag" property is OPTIONAL.
+
+Its value defines the expected etag of the resource returned when following the link relationship. This property is used to avoid race conditions that change the semantic meaning of the referenced resource. 
+
+For example if we have a resource describing the current print job with a link to a sub resource (decoupled property) containing the current file. Using the etag we can ensure the loaded file is associated with the current print job. If the print job is changed in the time between loading the current job and loading the file, this change is detectable by the client.
+
+## observable
+The "observable" property is OPTIONAL.
+
+Its value is boolean and SHOULD be true linked resource is observable {{RFC7641}}.
+
+# Media types
+
+## Location Description Object
+
+The location object is used to describe a physical location. 
+
+The object has the following members:
+
+{: vspace="0"}
+"location": string
+: Defines the location the description describes. The location SHOULD be described using a path (e.g. /CH/ETH/CAB/G51, /HOME/LIVING_ROOM/TABLE). This property is REQUIRED.
+
+"name": string
+: The name of the location. The device name is given by the user and SHOULD be editable. This property is OPTIONAL.
+
+
+The object MAY contain the following link relation:
+
+{: vspace="0"}
+"child":
+: The link relation type "child" can be used to refer to a child location.
+
+"add-child":
+: The link relation type "add-child" specifies that the linked form can be used to register a new child location. If a child location with same URL was already registered, the registered location SHOULD be updated. The added child location MUST be unique. 
+
+"remove-child":
+: The link relation type "remove-child" specifies that the linked form can be used to remove the child location. The child location to be removed is selected based location description URL.
+
+"thing":
+: The link relation type "thing" can be used to refer to a thing description registered at the location.
+
+"add-thing":
+: The link relation type "add-thing" specifies that the linked form can be used to register a thing description. If a thing description with same URL was already registered, the thing description SHOULD be updated.
+
+"remove-thing":
+: The link relation type "remove-thing" specifies that the linked form can be used to remove the child location. The child location to be removed is selected thing description URL.
+
+
+The location object is encoded using the CoRE-HAL based media type 'application/x.location-description+json'. 
+
+### Example
+	   {
+	     "_self": "coap://localhost:33433/",
+	     "location": "/CH/ETH/CAB",
+	     "name": "ETH Department of Computer Science",
+	     "_links": {
+	       "child": {
+	         "href": "coap://localhost:23124/",
+	         "type": "application/x.location-description+json"
+	       }
+	     },
+	     "_embedded": {
+	       "child":{
+	         "_self": "coap://localhost:23124/",
+	         "location": "/CH/ETH/CAB/G51",
+	         "name": "Lecture Hall",
+	       }
+	     },
+	     "_forms": {
+	       "add-child": {
+	         "method": "PUT", "href": "/children",
+	         "accepts": "application/x.location-description+json"
+	       },
+	       "remove-child": {
+	         "method": "DELETE", "href": "/children",
+	         "accepts": "application/x.location-description+json"
+	       }
+	     }
+	   }
+
+## Thing Description Object
+
+The thing object is used to describe a thing (e.g. a lamp, an air conditioner). For each physical device there MAY be a resource describing the device. 
+
+
+The object has the following members:
+
+{: vspace="0"}
+"name": string
+: The name of the device. The device name is given by the user and SHOULD be editable. This property is OPTIONAL.
+
+"type": string
+: Defines the device type using a human-readable string. This property is OPTIONAL.
+
+"location": string
+: Defines the location of the device. The device location is defined by the user and SHOULD be editable. The device SHOULD be described using a path (e.g. /CH/ETH/CAB/G51, /HOME/LIVING_ROOM/TABLE). This property is OPTIONAL. If the device location is unknown the location value SHOULD be "UNDEFINED".
+
+The object MAY contain the following link relations:
+
+{: vspace="0"}
+"identify":
+: The link relation type "identify" specifies that the linked form can be used to physically identify the thing. In the case of a light bulb, for example, the lamp could flash to enable the user to physically identify the device.
+
+The thing object is encoded using the CoRE-HAL based media type 'application/x.thing-description+json'. 
+
+### Examples
+	   {
+	     "_self": "coap://localhost:33412/"
+	     "name": "Living Room Lamp",
+	     "type": "Floor Lamp",
+	     "location": "/CH/ETH/CAB/G51",
+	     "mac": "01:23:45:67:89:ab",
+	     "_link": {
+	       "lighting-config": {
+	         "href": "/lighting",
+	         "type": "application/x.lighting-config"
+	       },
+	       "power-consumption": {
+	         "href": "/power"
+	       }
+	     },
+	     "_forms": {
+	       "identify": {
+	         "method": "POST",
+	         "href": "/identify"
+	       },
+	       "edit": {
+	         "method": "POST",
+	         "href": "",
+	         "accepts": "application/x.thing-description+json"
+	       }
+	     }
+	   }
+
+--- fluff
